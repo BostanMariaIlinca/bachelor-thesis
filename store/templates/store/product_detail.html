@@ -1,0 +1,166 @@
+{% extends 'core/base.html' %}
+
+{% block title %}{{ product.title }}{% endblock %}
+
+{% block content %}
+<div class="flex justify-left">
+    <div class="flex">
+        {% if product.image %}
+        <div class="mr-4">
+            <div class="p-2 bg-white rounded-lg shadow-md max-w-xs" style="max-width: 220px;">
+                <img src="{{ product.image.url }}" alt="Image of {{ product.title }}" style="max-width: 200px; max-height: 200px;">
+            </div>
+        </div>
+        {% endif %}
+
+        <div>
+            <h1 class="text-3xl font-bold mb-4">{{ product.title }}</h1>
+
+            <p class="text-xl  text-black">
+                ${{ product.get_display_price }}
+                -
+                <a href="{% url 'vendor_detail' product.user.id %}">{% firstof product.user.get_full_name product.user.username %}</a>
+            </p>
+
+            {% if product.user != current_user and not user_has_purchased %}
+            <a href="{% url 'add_to_cart' product.id %}" class="inline-block py-2 px-4 bg-white text-black rounded-full border border-black border-2">Add to cart</a>
+            {% endif %}
+            {% if user_has_purchased %}
+            <p>Already in your library.</p>
+            {% endif %}
+
+            {% if product.description %}
+            <p class="mt-4">
+                {{ product.description }}
+            </p>
+            {% endif %}
+        </div>
+    </div>
+
+
+    <div class="bg-102E40FF rounded-lg shadow-md border border-black p-4" style="max-width: 280px; margin-left:10px; max-height: 400px;">
+    <h2 class="text-lg font-semibold mb-2">Reviews</h2>
+    {% if reviews %}
+        {% for review in reviews %}
+            <div class="bg-white border border-black rounded-lg p-2 mb-2">
+                <p class="text-sm"><strong>{{ review.user.username }}</strong> - {{ review.created_at|date:"F j, Y" }}</p>
+                <p>{{ review.comment }}</p>
+            </div>
+        {% endfor %}
+        {% if is_paginated %}
+            <div class="pagination">
+                <span class="step-links">
+                    {% if reviews.has_previous %}
+                        <a href="?page={{ reviews.previous_page_number }}">&laquo;previous</a>
+                    {% endif %}
+
+                    {% if reviews.has_next %}
+                        <a href="?page={{ reviews.next_page_number }}">next</a>
+                        <a href="?page={{ reviews.paginator.num_pages }}"> &raquo;</a>
+                    {% endif %}
+                </span>
+            </div>
+        {% endif %}
+    {% else %}
+        <p>No reviews yet.</p>
+    {% endif %}
+
+    {% if request.user.is_authenticated %}
+        {% if not is_owner and user_has_purchased %}
+            <h3 class="text-xl font-bold mt-6">Leave a Review</h3>
+            <div style="width: 100%;">
+                <form method="post">
+                    {% csrf_token %}
+                    {{ form.as_p }}
+                    <button type="submit" class="inline-block py-2 px-4 bg-white text-black rounded-full border border-black border-2">Submit Review</button>
+                </form>
+            </div>
+        {% elif is_owner %}
+            <p><strong>You cannot review your own book.</strong></p>
+        {% elif not user_has_purchased %}
+            <p><strong>You must purchase the book to leave a review.</strong></p>
+        {% endif %}
+    {% else %}
+        <p><strong>You must be logged in to leave a review.</strong></p>
+    {% endif %}
+</div>
+
+</div>
+{% if product.content %}
+<h2 style="font-size: 24px; font-weight: bold;">PREVIEW</h2>
+<p> You can preview at most 10 pages. </p>
+
+<div id="page-controls">
+    <button id="prev-page-btn">Previous</button>
+    <button id="next-page-btn">Next</button>
+    <span>Page: </span>
+    <select id="page-number-select"></select>
+</div>
+<div id="pdf-viewer" style="width: 0%; border: 3px solid black;"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.12.313/pdf.min.js"></script>
+<script>
+    const url = "{{ product.content.url }}";
+    const pdfViewer = document.getElementById('pdf-viewer');
+    const pageControls = document.getElementById('page-controls');
+    const prevPageButton = document.getElementById('prev-page-btn');
+    const nextPageButton = document.getElementById('next-page-btn');
+    const pageNumberSelect = document.getElementById('page-number-select');
+    let pdfDoc = null;
+    let pageNum = 1;
+    let totalPages = 0;
+    const MAX_PAGES_PREVIEW = 10; // Maximum number of pages to preview
+
+    // Initialize PDF.js
+    pdfjsLib.getDocument(url).promise.then(pdf => {
+        pdfDoc = pdf;
+        totalPages = Math.min(pdf.numPages, MAX_PAGES_PREVIEW); // Limit to maximum 10 pages
+        renderPage(pageNum);
+        // Populate page number select dropdown
+        for (let i = 1; i <= totalPages; i++) {
+            const option = document.createElement('option');
+            option.textContent = i;
+            option.value = i;
+            pageNumberSelect.appendChild(option);
+        }
+    });
+
+    function renderPage(num) {
+        pdfDoc.getPage(num).then(page => {
+            const scale = 1.0;
+            const viewport = page.getViewport({ scale: scale });
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+            pdfViewer.innerHTML = '';
+            pdfViewer.appendChild(canvas);
+            page.render({
+                canvasContext: context,
+                viewport: viewport
+            });
+            pageNum = num;
+            updatePageNumberSelect();
+        });
+    }
+
+    function updatePageNumberSelect() {
+        pageNumberSelect.value = pageNum;
+    }
+
+    prevPageButton.addEventListener('click', () => {
+        if (pageNum <= 1) return;
+        renderPage(pageNum - 1);
+    });
+
+    nextPageButton.addEventListener('click', () => {
+        if (pageNum >= totalPages) return;
+        renderPage(pageNum + 1);
+    });
+
+    pageNumberSelect.addEventListener('change', () => {
+        const newPageNum = parseInt(pageNumberSelect.value);
+        renderPage(newPageNum);
+    });
+</script>
+{% endif %}
+{% endblock %}

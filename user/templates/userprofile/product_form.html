@@ -1,0 +1,51 @@
+{% extends 'core/base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+    <h1 class="text-2xl">{{ title }}</h1>
+
+    <form id="product-form" method="post" action="." enctype="multipart/form-data" class="space-y-5">
+        {% csrf_token %}
+
+        <div class="flex items-center">
+            <input type="checkbox" id="id_is_illustrated" name="is_illustrated" class="mr-2">
+            <label for="id_is_illustrated">Do you want to illustrate it?</label>
+        </div>
+
+        {{ form.as_p }}
+
+        <div class="flex justify-between">
+            <button type="submit" id="save-button" class="inline-block py-4 px-8 bg-white text-black rounded-full border border-black border-2">Submit</button>
+            {% if product %}
+                <a href="{% url 'delete_product' product.id %}" class="inline-block py-4 px-8 bg-white text-black rounded-full border border-black border-2">Delete product</a>
+            {% endif %}
+        </div>
+    </form>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var isIllustratedCheckbox = document.getElementById('id_is_illustrated');
+            var saveButton = document.getElementById('save-button');
+            var productForm = document.getElementById('product-form');
+
+            saveButton.addEventListener('click', function (event) {
+                if (isIllustratedCheckbox.checked) {
+                    event.preventDefault();
+                    var formData = new FormData(productForm);
+                    var xhr = new XMLHttpRequest();
+                    xhr.open('POST', productForm.action);
+                    xhr.setRequestHeader('X-CSRFToken', '{{ csrf_token }}');
+                    xhr.onload = function () {
+                        if (xhr.status === 200) {
+                            window.location.href = '{% url "my_store" %}';
+                        } else {
+                            console.error('An error occurred.');
+                        }
+                    };
+                    xhr.send(formData);
+                }
+            });
+        });
+    </script>
+{% endblock %}

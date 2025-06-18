@@ -1,0 +1,79 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Checkout{% endblock %}
+
+{% block content %}
+    <h1 class="mb-6 text-2xl">Checkout</h1>
+
+    <h2 class="text-xl text-gray-500">Total cost: ${{ cart.get_total_cost }}</h2>
+
+    <form id="checkout-form" method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button id="checkout-button" class="inline-block px-8 py-4 bg-teal-500 text-white">Checkout</button>
+    </form>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+document.getElementById('checkout-form').addEventListener('submit', function(event) {
+    event.preventDefault();
+
+    // Collect form data
+    let data = {
+        'first_name': document.querySelector('[name="first_name"]').value,
+        'last_name': document.querySelector('[name="last_name"]').value,
+    };
+
+    // Get CSRF token
+    let csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    // Log the data being sent
+    console.log("Data being sent:", data);
+
+    // Initialize Stripe
+    let stripe = Stripe('{{ pub_key }}');
+    console.log("Stripe initialized with public key:", '{{ pub_key }}');
+
+    // Send data to server
+    fetch('/cart/checkout/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify(data)
+    })
+    .then(function(response) {
+        console.log("Fetch response status:", response.status);
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(function(data) {
+        console.log("Session data received:", data);
+
+        if (data.url) {
+            let sessionUrl = data.url;
+            console.log("Session URL:", sessionUrl);
+
+            // Redirect to Stripe Checkout
+            window.location.href = sessionUrl;
+        } else {
+            console.error('Session URL not found in response:', data);
+        }
+    })
+    .catch(function(error) {
+        console.error('Error during fetch or redirectToCheckout:', error);
+        alert('An error occurred. Please try again.');
+    });
+
+    return false;
+});
+
+
+</script>
+{% endblock %}

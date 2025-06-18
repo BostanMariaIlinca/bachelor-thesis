@@ -1,0 +1,70 @@
+{% extends 'core/base.html' %}
+
+{% block title %}My library{% endblock %}
+
+{% block content %}
+<p class="text-7xl font-bold mb-4">Welcome, {{ request.user.username }}!</p>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="mt-4 px-8 py-4 bg-teal-200 text-teal-800">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+   <a href="{% url 'add_product' %}" class="inline-block py-4 px-8 bg-white text-black rounded-full border border-black border-2">Add book</a>
+
+    <h2 class="text-3xl font-bold mt-6 mb-4">My books</h2>
+
+    {% if request.user.products.exists %}
+        <div class="flex flex-wrap">
+            {% for product in request.user.products.all %}
+                <div class="product w-1/4 p-2">
+                    <div class="p-4 bg-white rounded-lg shadow-md h-full">
+                        <a href="{% url 'edit_product' product.id %}">
+                            {% if product.image %}
+                                <div class="image mb-2">
+                                    <img src="{{ product.image.url }}" alt="Image of {{ product.title }}">
+                                </div>
+                            {% endif %}
+
+                            <h2 class="text-xl">{{ product.title }}</h2>
+                            <p class="text-xs text-gray-600">${{ product.get_display_price }}</p>
+
+                            <hr class="my-3">
+                        </a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="mt-4 py-4 px-8">No books yet.</p>
+    {% endif %}
+<h2 class="text-3xl font-bold mt-4 mb-4">Other authors</h2>
+
+{% if request.user.purchased_products.exists %}
+    <div class="flex flex-wrap">
+        {% for purchase in request.user.purchased_products.all %}
+            <div class="product w-1/3 p-2">
+                <div class="p-4 bg-white rounded-lg shadow-md h-full">
+                    <a href="{% url 'purchased_product_detail' purchase.product.category.slug purchase.product.slug %}">
+                        {% if purchase.product.image %}
+                            <div class="image mb-2">
+                                <img src="{{ purchase.product.image.url }}" alt="Image of {{ purchase.product.title }}">
+                            </div>
+                        {% endif %}
+                        <h2 class="text-xl">{{ purchase.product.title }}</h2>
+                        <p class="text-xs text-gray-600">${{ purchase.product.get_display_price }}</p>
+                        <hr class="my-3">
+                    </a>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <p class="mt-4 py-4 px-8 bg-gray-200">You haven't purchased any books yet...</p>
+{% endif %}
+
+
+{% endblock %}
